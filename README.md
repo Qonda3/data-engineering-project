@@ -1,4 +1,4 @@
-# Data Engineering Project 2024
+# Data Engineering Project
 
 See https://dev.curriculum.wethinkco.de/dataengineering/de-project/project-intro/ for instructions.
 
