@@ -1,0 +1,5 @@
+paramiko
+watchdog
+confluent-kafka
+pandas
+python-dotenv

@@ -1,0 +1,4 @@
+input_path: data/raw/crm
+output_table_hourly: data/prepared/crm_hourly_summary
+zar_per_minute: 1.0
+zar_per_gb: 49.0

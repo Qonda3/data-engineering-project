@@ -1,0 +1,9 @@
+# Ignore directories
+volumes/data/*
+.venv
+.vscode
+.tmp
+
+# Ignored file types
+*.pyc
+

@@ -1,0 +1,19 @@
+{
+  "name": "inventory-connector",
+  "config": {
+      "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+      "database.hostname": "postgres",
+      "database.port": "5432",
+      "database.user": "postgres",
+      "database.password": "postgres",
+      "database.dbname": "wtc_prod",
+      "database.server.name": "postgres",
+      "plugin.name": "pgoutput",
+      "slot.name": "debezium_slot",
+      "publication.name": "debezium_publication",
+      "topic.prefix": "wtc_prod_crm",
+      "snapshot.mode": "always",
+      "database.history.kafka.bootstrap.servers": "redpanda-0:9092,redpanda-1:9092,redpanda-2:9092",
+      "database.history.kafka.topic": "schema-changes.inventory"
+  }
+}

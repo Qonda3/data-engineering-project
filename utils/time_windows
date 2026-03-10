@@ -1,0 +1,6 @@
+from pyspark.sql import functions as F
+
+def aligned_window_start(col_timestamp, window_seconds: int):
+    return F.from_unixtime(
+        (F.unix_timestamp(col_timestamp)/window_seconds).cast("bigint") * window_seconds
+    ).cast("timestamp")

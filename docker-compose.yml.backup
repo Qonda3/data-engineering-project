@@ -1,0 +1,304 @@
+version: '3.8'
+
+networks:
+  wtc_cap_one:
+    driver: bridge
+
+volumes:
+  redpanda-0: null
+  redpanda-1: null
+  redpanda-2: null
+  scylla-data:  # Add this line
+    driver: local
+
+services:
+  # Infrastructure services
+  postgres:
+    build: ./pgsql
+    container_name: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s           # Time between running the check
+      timeout: 60s            # Time after which the check is considered failed if no response
+      retries: 50              # How many times to retry before marking the service as unhealthy
+      start_period: 10s       # Start period before the first check is run
+    volumes:
+      - ./volumes/data/postgres/var/lib/postgresql/data:/var/lib/postgresql/data
+      - ./volumes/config/postgres/var/lib/postgresql/data/postgresql.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - wtc_cap_one
+    ports:
+      - "15432:5432"
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        window: 60s
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: "1g"
+        reservations:
+          cpus: "2"
+          memory: "512m"
+
+  sftp:
+    image: "emberstack/sftp"
+    container_name: sftp
+    networks:
+      - wtc_cap_one
+    ports:
+      - "10022:22"
+    volumes:
+      - ./volumes/data/sftp/home/cdr_data:/home/cdr_data
+      - ./volumes/config/sftp/config.json:/app/config/sftp.json:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "128m"
+        reservations:
+          cpus: "0.5"
+          memory: "128m"
+
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers'
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers'
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with each other internally.
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      # Mode dev-container uses well-known configuration properties for development in containers.
+      - --mode dev-container
+      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
+      - --smp 1
+      - --default-log-level=info
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    container_name: redpanda-0
+    volumes:
+      - ./volumes/data/redpanda/redpanda-0:/var/lib/redpanda/data
+      - ./volumes/config/redpanda/redpanda-0/etc/redpanda:/etc/redpanda
+    networks:
+      - wtc_cap_one
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 10s           # Time between running the check
+      timeout: 60s            # Time after which the check is considered failed if no response
+      retries: 50              # How many times to retry before marking the service as unhealthy
+      start_period: 10s
+  redpanda-1:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:29092
+      - --advertise-kafka-addr internal://redpanda-1:9092,external://localhost:29092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:28082
+      - --advertise-pandaproxy-addr internal://redpanda-1:8082,external://localhost:28082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:28081
+      - --rpc-addr redpanda-1:33145
+      - --advertise-rpc-addr redpanda-1:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+      - --seeds redpanda-0:33145
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    container_name: redpanda-1
+    volumes:
+      - ./volumes/data/redpanda/redpanda-1:/var/lib/redpanda/data
+      - ./volumes/config/redpanda/redpanda-1/etc/redpanda:/etc/redpanda
+    networks:
+      - wtc_cap_one
+    ports:
+      - 28081:28081
+      - 28082:28082
+      - 29092:29092
+      - 29644:9644
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 10s           # Time between running the check
+      timeout: 60s            # Time after which the check is considered failed if no response
+      retries: 50              # How many times to retry before marking the service as unhealthy
+      start_period: 10s
+    depends_on:
+      - redpanda-0
+  redpanda-2:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:39092
+      - --advertise-kafka-addr internal://redpanda-2:9092,external://localhost:39092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:38082
+      - --advertise-pandaproxy-addr internal://redpanda-2:8082,external://localhost:38082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:38081
+      - --rpc-addr redpanda-2:33145
+      - --advertise-rpc-addr redpanda-2:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+      - --seeds redpanda-0:33145
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    container_name: redpanda-2
+    volumes:
+      - ./volumes/data/redpanda/redpanda-2:/var/lib/redpanda/data
+      - ./volumes/config/redpanda/redpanda-2/etc/redpanda:/etc/redpanda
+    networks:
+      - wtc_cap_one
+    ports:
+      - 38081:38081
+      - 38082:38082
+      - 39092:39092
+      - 39644:9644
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 10s           # Time between running the check
+      timeout: 60s            # Time after which the check is considered failed if no response
+      retries: 50              # How many times to retry before marking the service as unhealthy
+      start_period: 10s
+    depends_on:
+      - redpanda-0
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:v2.7.2
+    networks:
+      - wtc_cap_one
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-0:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda-0:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644"]
+    ports:
+      - 18084:8080
+    depends_on:
+      - redpanda-0
+
+  # Data generators
+  forex:
+    build: ./forex
+    container_name: forex
+    networks:
+      - wtc_cap_one
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+      redpanda-1:
+        condition: service_healthy
+      redpanda-2:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "128m"
+        reservations:
+          cpus: "0.25"
+          memory: "64m"
+
+  # Python App - CDR
+  cdr:
+    build: ./cdr
+    container_name: cdr
+    networks:
+      - wtc_cap_one
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "128m"
+        reservations:
+          cpus: "0.5"
+          memory: "64m"
+
+  # Python App - CDR
+  crm:
+    build: ./crm
+    container_name: crm
+    networks:
+      - wtc_cap_one
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "128m"
+        reservations:
+          cpus: "0.25"
+          memory: "64m"
+
+  scylladb:
+    image: scylladb/scylla:latest
+    container_name: scylladb
+    networks:
+      - wtc_cap_one
+    ports:
+      - "9042:9042"
+    command: >
+      --smp 1
+      --memory 512M
+      --developer-mode 1
+    environment:
+      - SCYLLA_CLUSTER_NAME=CDR_Cluster
+    healthcheck:
+      test: ["CMD", "cqlsh", "-u", "cassandra", "-p", "cassandra", "-e", "DESCRIBE KEYSPACES"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+  # TBD 3: CDR Stream Processing - Aggregator Service
+  cdr-aggregator:
+    build: ./redpanda_to_aggregate/cdr-aggregator
+    container_name: cdr-aggregator
+    networks:
+      - wtc_cap_one
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+      scylladb:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./redpanda_to_aggregate/cdr-aggregator:/app
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512m"
+        reservations:
+          cpus: "0.5"
+          memory: "256m"    
+  #############################
+  # Add you containers etc here
+  #############################

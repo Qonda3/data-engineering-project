@@ -1,0 +1,16 @@
+{
+    "Global": {
+        "Chroot": {
+            "Directory": "%h",
+            "StartPath": "upload"
+        },
+        "Directories": ["sftp"]
+    },
+    "Users": [
+        {
+            "Username": "cdr_data",
+            "Password": "password"
+        }
+    ]
+}
+

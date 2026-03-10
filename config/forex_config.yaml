@@ -1,0 +1,4 @@
+input_path: data/raw/forex
+output_table_m1: data/prepared/forex_m1
+output_table_m30: data/prepared/forex_m30
+output_table_h1: data/prepared/forex_h1

@@ -1,0 +1,6 @@
+input_path: data/raw/cdr
+output_table_15m: data/prepared/cdr_summary_15m
+output_table_30m: data/prepared/cdr_summary_30m
+output_table_1h: data/prepared/cdr_summary_1h
+window_sizes_seconds: [900, 1800, 3600]
+watermark_minutes: 30

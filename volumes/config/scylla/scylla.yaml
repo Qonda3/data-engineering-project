@@ -1,0 +1,17 @@
+cluster_name: 'CDR Cluster'
+listen_address: 0.0.0.0
+rpc_address: 0.0.0.0
+broadcast_address: scylladb
+
+authenticator: PasswordAuthenticator
+authorizer: CassandraAuthorizer
+
+# Reduced memory for development
+commitlog_total_space_in_mb: 32
+concurrent_materialized_view_writes: 4
+concurrent_reads: 4
+concurrent_writes: 4
+file_cache_size_in_mb: 64
+
+# Enable metrics for monitoring
+endpoint_snitch: SimpleSnitch
